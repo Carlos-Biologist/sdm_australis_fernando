@@ -48,7 +48,7 @@ axis(2, at = seq(-90, 90, by = 20))
 axis(1, at = seq(-180, 180, by = 20))
 
 # Definir as coordenadas de recorte
-coord_limit <- c(-80, 0, -80, 10)
+coord_limit <- c(-100, -20, -90, 20)
 
 # Converter o objeto oceans de sf para sp
 oceans_sp <- as(oceans, "Spatial")
@@ -77,15 +77,11 @@ eez_cropped <- raster::crop(eez_cropped_1, ext_lim)
 plot(eez_cropped, add=TRUE)
 
 # Adicionar eixos y
-valores_y <- c(10, 0, -10, -20, -30, -40, -50, -60, -70, -80)
+valores_y <- c(20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80, -90)
 axis(2, at = valores_y)
 # Adicionar eixo x
-valores_x <- c(-80, -60, -40, -20, 0)
+valores_x <- c(-100, -90, -80, -70, -60, -50, -40, -30, -20)
 axis(1, at = valores_x)
-
-# Adicionar eixos
-axis(2, at = seq(-80, 10, by = 10))
-axis(1, at = seq(-80, 0, by = 20))
 
 ################################################################################
 ################################################################################
