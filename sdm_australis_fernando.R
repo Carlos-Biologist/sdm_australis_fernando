@@ -38,7 +38,11 @@ dados_australis <- bind_rows(dados_ams, dados_peru)
 head(dados_australis)
 summary(dados_australis)
 str(dados_australis)
-  
+
+write.csv(dados_australis,
+          file = "dados_australis.csv",
+          row.names = FALSE)
+
 ################################################################################
 ################################################################################
 
