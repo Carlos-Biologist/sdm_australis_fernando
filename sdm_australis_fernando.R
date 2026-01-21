@@ -1,6 +1,20 @@
 ################################################################################
 ################################################################################
 
+# Baixar pacotes
+
+library(sp)
+#library(sf)
+#library(raster)
+library(dplyr)
+
+#library(lubridate)
+#library(writexl)
+#library(ggplot2)
+
+################################################################################
+################################################################################
+
 # 1. Preparação dos dados
 
 options(scipen = 999) # remover notação científica dos dados
@@ -8,26 +22,23 @@ options(scipen = 999) # remover notação científica dos dados
 ################################################################################
 ################################################################################
 
-dados <- read.csv("AmSul_FinalMax.csv", header = TRUE, sep = ",")
+dados_ams <- read.csv("AmSul_FinalMax.csv")
+dados_peru <- read.csv("Peru_FinalMax.csv")
 
-head(dados)
-summary(dados)
-str(dados)
+head(dados_ams)
+summary(dados_ams)
+str(dados_ams)
 
-################################################################################
-################################################################################
+head(dados_peru)
+summary(dados_peru)
+str(dados_peru)
 
-# Baixar pacotes
+dados_australis <- bind_rows(dados_ams, dados_peru)
 
-library(sp)
-library(sf)
-library(raster)
-library(dplyr)
-
-#library(lubridate)
-#library(writexl)
-#library(ggplot2)
-
+head(dados_australis)
+summary(dados_australis)
+str(dados_australis)
+  
 ################################################################################
 ################################################################################
 
@@ -62,8 +73,6 @@ ext_lim <- raster::extent(coord_limit[1], coord_limit[2], coord_limit[3], coord_
 # Usar a função crop do pacote raster para recortar
 oceans_cropped <- raster::crop(oceans_cropped_1, ext_lim)
 
-plot(oceans_cropped, col = "lightblue")
-
 # Converter o objeto oceans de sf para sp
 eez_sp <- as(eez, "Spatial")
 
@@ -73,7 +82,11 @@ eez_cropped_1 <- spTransform(eez_sp, CRS("+proj=longlat +datum=WGS84"))
 # Usar a função crop do pacote raster para recortar
 eez_cropped <- raster::crop(eez_cropped_1, ext_lim)
 
+################################################################################
+################################################################################
+
 # Plotar Shapefile recortado
+plot(oceans_cropped, col = "lightblue")
 plot(eez_cropped, add=TRUE)
 
 # Adicionar eixos y
@@ -83,13 +96,13 @@ axis(2, at = valores_y)
 valores_x <- c(-100, -90, -80, -70, -60, -50, -40, -30, -20)
 axis(1, at = valores_x)
 
-################################################################################
-################################################################################
+cores <- ifelse(dados_australis$Species == "Aaustralis",
+                "red",
+                "blue")
 
-# Adicionar pontos de ocorrência
-points(dados$Long, dados$Lat,
+points(dados_australis$Long, dados_australis$Lat,
        pch = 19,
-       col = "red",
+       col = cores,
        cex = 0.7)
 
 ################################################################################
