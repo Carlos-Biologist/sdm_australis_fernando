@@ -3,13 +3,16 @@
 
 # Baixar pacotes
 
-library(sp)
-#library(sf)
-#library(raster)
-library(dplyr)
+install.packages("devtools")
+devtools::install_github("bio-oracle/biooracler")
 
+library(biooracler)
+library(sp)
+library(dplyr)
+#library(sf)
+library(raster)
 #library(lubridate)
-#library(writexl)
+library(writexl)
 #library(ggplot2)
 
 ################################################################################
@@ -18,6 +21,9 @@ library(dplyr)
 # 1. Preparação dos dados
 
 options(scipen = 999) # remover notação científica dos dados
+
+pal <- c("#76B9A5", "#E8E1A7", "#E4AD73", "#DC6D37", "#E02423") # paleta de cores
+pal1 <- c("#3E49BB", "#3498DB", "yellow", "orange", "red", "darkred") # paleta de cores
 
 ################################################################################
 ################################################################################
@@ -63,7 +69,7 @@ axis(2, at = seq(-90, 90, by = 20))
 axis(1, at = seq(-180, 180, by = 20))
 
 # Definir as coordenadas de recorte
-coord_limit <- c(-100, -20, -90, 20)
+coord_limit <- c(-100, -20, -89.975, 20)
 
 # Converter o objeto oceans de sf para sp
 oceans_sp <- as(oceans, "Spatial")
@@ -112,5 +118,152 @@ points(dados_australis$Long, dados_australis$Lat,
 ################################################################################
 ################################################################################
 
+list_layers()
 
+camadas <- list_layers()
 
+write_xlsx(camadas, "informacoes_camadas.xlsx")
+
+################################################################################
+################################################################################
+
+tas_baseline_surf <- "tas_baseline_2000_2020_depthsurf" ### Kelvin - Transformar em °C
+chl_baseline_surf <- "chl_baseline_2000_2018_depthsurf" ### mg m-3
+mld_baseline_surf <- "mlotst_baseline_2000_2019_depthsurf" ### m
+tsm_baseline_surf <- "thetao_baseline_2000_2019_depthsurf" ### °C
+sal_baseline_surf <- "so_baseline_2000_2019_depthsurf" ### PSU
+swd_baseline_surf <- "swd_baseline_2000_2019_depthsurf" ### Graus
+sws_baseline_surf <- "sws_baseline_2000_2019_depthsurf" ### m s**-1
+produt_baseline_surf <- "phyc_baseline_2000_2020_depthsurf" ### Total Phytoplankton - MMol' 'M-3
+bathy_baseline <- "terrain_characteristics" ### metros  
+iron_baseline_surf <- "dfe_baseline_2000_2018_depthsurf" ###
+nitrate_baseline_surf <- "no3_baseline_2000_2018_depthsurf" ###
+oxygen_baseline_surf <- "o2_baseline_2000_2018_depthsurf" ###
+ph_baseline_surf <- "ph_baseline_2000_2018_depthsurf" ###
+phosphate_baseline_surf <- "po4_baseline_2000_2018_depthsurf" ###
+silicate_baseline_surf <- "si_baseline_2000_2018_depthsurf" ###
+
+time_bathy = c('1970-01-01T00:00:00Z', '1970-01-01T00:00:00Z')
+time = c('2000-01-01T00:00:00Z', '2000-01-01T00:00:00Z')
+latitude = c(-89.975, 20)
+longitude = c(-100, 20)
+
+constraints_bathy = list(time_bathy, latitude, longitude)
+constraints = list(time, latitude, longitude)
+names(constraints) = c("time", "latitude", "longitude")
+names(constraints_bathy) = c("time", "latitude", "longitude")
+
+variables_tas_baseline_surf = c("tas_mean")
+variables_chl_baseline_surf = c("chl_mean")
+variables_mld_baseline_surf = c("mlotst_mean")
+variables_tsm_baseline_surf = c("thetao_mean")
+variables_sal_baseline_surf = c("so_mean")
+variables_swd_baseline_surf = c("swd_mean")
+variables_sws_baseline_surf = c("sws_mean")
+variables_produt_baseline_surf = c("phyc_mean")
+variables_bathy_baseline = c("bathymetry_mean")
+variables_iron_baseline_surf = c("dfe_mean")
+variables_nitrate_baseline_surf = c("no3_mean")
+variables_oxygen_baseline_surf = c("o2_mean")
+variables_ph_baseline_surf = c("ph_mean")
+variables_phosphate_baseline_surf = c("po4_mean")
+variables_silicate_baseline_surf = c("si_mean")
+
+tas_baseline_surf_2000_2010 <- download_layers(tas_baseline_surf, variables_tas_baseline_surf, constraints)
+chl_baseline_surf_2000_2010 <- download_layers(chl_baseline_surf, variables_chl_baseline_surf, constraints)
+mld_baseline_surf_2000_2010 <- download_layers(mld_baseline_surf, variables_mld_baseline_surf, constraints)
+tsm_baseline_surf_2000_2010 <- download_layers(tsm_baseline_surf, variables_tsm_baseline_surf, constraints)
+sal_baseline_surf_2000_2010 <- download_layers(sal_baseline_surf, variables_sal_baseline_surf, constraints)
+swd_baseline_surf_2000_2010 <- download_layers(swd_baseline_surf, variables_swd_baseline_surf, constraints)
+sws_baseline_surf_2000_2010 <- download_layers(sws_baseline_surf, variables_sws_baseline_surf, constraints)
+produt_baseline_surf_2000_2010 <- download_layers(produt_baseline_surf, variables_produt_baseline_surf, constraints)
+bathy_baseline_2000_2010 <- download_layers(bathy_baseline, variables_bathy_baseline, constraints_bathy)
+iron_baseline_2000_2010 <- download_layers(iron_baseline_surf, variables_iron_baseline_surf, constraints)
+nitrate_baseline_2000_2010 <- download_layers(nitrate_baseline_surf, variables_nitrate_baseline_surf, constraints)
+oxygen_baseline_2000_2010 <- download_layers(oxygen_baseline_surf, variables_oxygen_baseline_surf, constraints)
+ph_baseline_2000_2010 <- download_layers(ph_baseline_surf, variables_ph_baseline_surf, constraints)
+phosphate_baseline_2000_2010 <- download_layers(phosphate_baseline_surf, variables_phosphate_baseline_surf, constraints)
+silicate_baseline_2000_2010 <- download_layers(silicate_baseline_surf, variables_silicate_baseline_surf, constraints)
+
+# Criar RasterLayer a partir dos SpatRaster
+chl_surf_raster <- raster(chl_baseline_surf_2000_2010)
+mld_surf_raster <- raster(mld_baseline_surf_2000_2010)
+tsm_surf_raster <- raster(tsm_baseline_surf_2000_2010)
+sal_surf_raster <- raster(sal_baseline_surf_2000_2010)
+swd_surf_raster <- raster(swd_baseline_surf_2000_2010)
+sws_surf_raster <- raster(sws_baseline_surf_2000_2010)
+produt_surf_raster <- raster(produt_baseline_surf_2000_2010)
+bathy_raster <- raster(bathy_baseline_2000_2010)
+iron_surf_raster <- raster(iron_baseline_2000_2010)
+nitrate_surf_raster <- raster(nitrate_baseline_2000_2010)
+oxygen_surf_raster <- raster(oxygen_baseline_2000_2010)
+ph_surf_raster <- raster(ph_baseline_2000_2010)
+phosphate_surf_raster <- raster(phosphate_baseline_2000_2010)
+silicate_surf_raster <- raster(silicate_baseline_2000_2010)
+tas_surf_raster <- raster(tas_baseline_surf_2000_2010)
+
+# Empilhar os RasterLayer em um RasterStack
+bio <- stack(tas_surf_raster, chl_surf_raster, mld_surf_raster, tsm_surf_raster, sal_surf_raster, 
+                 swd_surf_raster, sws_surf_raster, produt_surf_raster, bathy_raster, iron_surf_raster,
+                 nitrate_surf_raster, oxygen_surf_raster, ph_surf_raster, phosphate_surf_raster, silicate_surf_raster)
+
+print(bio)
+
+plot(bio)
+
+################################################################################
+################################################################################
+
+install.packages("spThin")
+
+library(spThin)    # Realiza o "thinning" espacial, reduzindo a autocorrelação espacial em dados de ocorrência
+
+### Espacialização geográfica -----
+australis <- thin(
+  loc.data = dados_australis,                   # Dataframe de ocorrências filtrado
+  lat.col = "Lat",                              # Coluna com latitude
+  long.col = "Long",                            # Coluna com longitude
+  spec.col = "Species",                         # Coluna com o nome da espécie
+  thin.par = 100,                               # Distância mínima (km) entre pontos
+  reps = 100,                                   # Quantas vezes repetir o processo
+  locs.thinned.list.return = TRUE,              # Retorna lista com resultados de cada repetição
+  write.files = FALSE,                          # Não salva arquivos automaticamente
+  write.log.file = FALSE                        # Não cria arquivo de log
+)
+
+australis <- australis[[3]]                             # Seleciona a repetição
+nrow(australis)                                             # Mostra número de registros
+australis                                                   # Visualiza tabela final
+str(australis)
+
+################################################################################
+################################################################################
+
+# Plotar Shapefile recortado
+plot(oceans_cropped, col = "lightblue")
+plot(eez_cropped, add=TRUE)
+
+# Adicionar pontos de ocorrência
+points(australis$Longitude, australis$Latitude,
+       pch = 19,
+       col = "red",
+       cex = 0.7)
+
+# Adicionar eixos y
+valores_y <- c(20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80, -90)
+axis(2, at = valores_y)
+# Adicionar eixo x
+valores_x <- c(-100, -90, -80, -70, -60, -50, -40, -30, -20)
+axis(1, at = valores_x)
+
+cores <- ifelse(australis$Species == "Aaustralis",
+                "red",
+                "blue")
+
+points(australis$Longitude, australis$Latitude,
+       pch = 19,
+       col = cores,
+       cex = 0.7)
+
+################################################################################
+################################################################################
