@@ -3,6 +3,138 @@
 
 # Baixar pacotes
 
+install.packages("psych")
+install.packages("devtools")
+devtools::install_github("bio-oracle/biooracler")
+
+library(biooracler)
+library(sp)
+library(dplyr)
+library(psych) # Colinearidade
+#library(sf)
+library(raster)
+#library(lubridate)
+library(writexl)
+library(readxl)
+#library(ggplot2)
+
+################################################################################
+################################################################################
+
+# 1. Preparação dos dados
+
+options(scipen = 999) # remover notação científica dos dados
+
+pal <- c("#76B9A5", "#E8E1A7", "#E4AD73", "#DC6D37", "#E02423") # paleta de cores
+pal1 <- c("#3E49BB", "#3498DB", "yellow", "orange", "red", "darkred") # paleta de cores
+
+################################################################################
+################################################################################
+
+dados_ams <- read.csv("AmSul_FinalMax.csv")
+dados_peru <- read.csv("Peru_FinalMax.csv")
+
+head(dados_ams)
+summary(dados_ams)
+str(dados_ams)
+
+head(dados_peru)
+summary(dados_peru)
+str(dados_peru)
+
+dados_australis <- bind_rows(dados_ams, dados_peru)
+
+head(dados_australis)
+summary(dados_australis)
+str(dados_australis)
+
+write.csv(dados_australis,
+          file = "dados_australis.csv",
+          row.names = FALSE)
+
+################################################################################
+################################################################################
+
+# Baixar Shapefile usando sf
+oceans <- st_read("shapefile/goas_v01.shp")
+
+# Baixar Shapefile usando sf
+eez <- st_read("shapefile/eez_boundaries_v12.shp")
+
+par(mfrow=c(1, 1))
+
+# Plotar o shapefile com personalizações
+plot(oceans$geometry, col = "lightblue")
+plot(eez, col = "black", add=TRUE)
+
+# Adicionar eixos
+axis(2, at = seq(-90, 90, by = 20))
+axis(1, at = seq(-180, 180, by = 20))
+
+# Definir as coordenadas de recorte
+coord_limit <- c(-100, -20, -89.975, 20)
+
+# Converter o objeto oceans de sf para sp
+oceans_sp <- as(oceans, "Spatial")
+
+# Transformar os polígonos para o sistema de coordenadas desejado
+oceans_cropped_1 <- spTransform(oceans_sp, CRS("+proj=longlat +datum=WGS84"))
+
+# Criar uma extensão usando a função extent do pacote raster
+ext_lim <- raster::extent(coord_limit[1], coord_limit[2], coord_limit[3], coord_limit[4])
+
+# Usar a função crop do pacote raster para recortar
+oceans_cropped <- raster::crop(oceans_cropped_1, ext_lim)
+
+# Converter o objeto oceans de sf para sp
+eez_sp <- as(eez, "Spatial")
+
+# Transformar os polígonos para o sistema de coordenadas desejado
+eez_cropped_1 <- spTransform(eez_sp, CRS("+proj=longlat +datum=WGS84"))
+
+# Usar a função crop do pacote raster para recortar
+eez_cropped <- raster::crop(eez_cropped_1, ext_lim)
+
+################################################################################
+################################################################################
+
+# Plotar Shapefile recortado
+plot(oceans_cropped, col = "lightblue")
+plot(eez_cropped, add=TRUE)
+
+# Adicionar eixos y
+valores_y <- c(20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80, -90)
+axis(2, at = valores_y)
+# Adicionar eixo x
+valores_x <- c(-100, -90, -80, -70, -60, -50, -40, -30, -20)
+axis(1, at = valores_x)
+
+cores <- ifelse(dados_australis$Species == "Aaustralis",
+                "red",
+                "blue")
+
+points(dados_australis$Long, dados_australis$Lat,
+       pch = 19,
+       col = cores,
+       cex = 0.7)
+
+################################################################################
+################################################################################
+
+#list_layers()
+
+#camadas <- list_layers()
+
+#write_xlsx(camadas, "informacoes_camadas.xlsx")
+
+################################################################################
+################################################################################
+
+################################################################################
+################################################################################
+
+# Baixar pacotes
+
 install.packages("devtools")
 devtools::install_github("bio-oracle/biooracler")
 
@@ -211,6 +343,192 @@ print(bio)
 
 plot(bio)
 
+################################################################################
+################################################################################
+
+bio <- crop(bio, oceans_cropped) # recorte da área de estudo
+bio <- mask(bio, oceans_cropped) # máscara fora da área de estudo
+
+names(bio)
+
+#bio <- projectRaster(bio, crs = crs(oceans)) # reprojetar
+
+################################################################################
+################################################################################
+
+### Tratamento das variáveis -----
+
+australis_coords <- dados_australis[, c("Long", "Lat")]
+
+australis <- raster::extract(bio, australis_coords)
+
+summary(australis)
+str(australis)
+
+australis_df <- as.data.frame(australis)
+
+str(australis_df)
+colnames(australis_df)
+
+australis_full <- cbind(dados_australis, australis_df)
+
+str(australis_full)
+colnames(australis_full)
+
+write.csv(australis_full,
+          file = "australis_full_com_NAs.csv",
+          row.names = FALSE)
+
+australis_sem_NAs <- australis_full[complete.cases(australis_full), ]
+
+str(australis_sem_NAs)
+summary(australis_sem_NAs)
+
+write.csv(australis_sem_NAs,
+          file = "australis_full_sem_NAs.csv",
+          row.names = FALSE)
+
+write_xlsx(
+  australis_sem_NAs,
+  "australis_sem_NAs.xlsx"
+)
+
+################################################################################
+################################################################################
+
+# Plotar Shapefile recortado
+plot(oceans_cropped, col = "lightblue")
+plot(eez_cropped, add=TRUE)
+
+# Adicionar eixos y
+valores_y <- c(20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80, -90)
+axis(2, at = valores_y)
+# Adicionar eixo x
+valores_x <- c(-100, -90, -80, -70, -60, -50, -40, -30, -20)
+axis(1, at = valores_x)
+
+cores <- ifelse(australis_sem_NAs$Species == "Aaustralis",
+                "red",
+                "blue")
+
+points(australis_sem_NAs$Long, australis_sem_NAs$Lat,
+       pch = 19,
+       col = cores,
+       cex = 0.7)
+
+################################################################################
+################################################################################
+
+library(spThin)    # Realiza o "thinning" espacial, reduzindo a autocorrelação espacial em dados de ocorrência
+
+### Espacialização geográfica -----
+australis_thin <- thin(
+  loc.data = australis_sem_NAs,                 # Dataframe de ocorrências filtrado
+  lat.col = "Lat",                              # Coluna com latitude
+  long.col = "Long",                            # Coluna com longitude
+  spec.col = "Species",                         # Coluna com o nome da espécie
+  thin.par = 100,                               # Distância mínima (km) entre pontos
+  reps = 100,                                   # Quantas vezes repetir o processo
+  locs.thinned.list.return = TRUE,              # Retorna lista com resultados de cada repetição
+  write.files = FALSE,                          # Não salva arquivos automaticamente
+  write.log.file = FALSE                        # Não cria arquivo de log
+)
+
+# Número de pontos em cada repetição
+n_locs <- sapply(australis_thin, nrow)
+
+# Repetição com maior número de ocorrências
+australis_thin <- australis_thin[[which.max(n_locs)]]
+
+nrow(australis_thin)                                             # Mostra número de registros
+australis_thin                                                   # Visualiza tabela final
+str(australis_thin)
+
+write_xlsx(
+  australis_thin,
+  "australis_thin.xlsx"
+)
+
+################################################################################
+################################################################################
+
+australis_thin_full <- read_xlsx("australis_sem_NAs.xlsx")
+
+head(australis_thin_full)
+str(australis_thin_full)
+
+australis_colin <- australis_sem_NAs %>%
+  dplyr::select(-tas_mean, -phyc_mean, -o2_mean, -ph_mean)
+
+pairs.panels(
+  australis_colin,
+  cex = 5,        # tamanho geral da fonte (números, correlações)
+  cex.labels = 1.6 # tamanho dos nomes das variáveis
+)
+
+australis_thin_full = australis_colin 
+
+################################################################################
+################################################################################
+
+# Plotar Shapefile recortado
+plot(oceans_cropped, col = "lightblue")
+plot(eez_cropped, add=TRUE)
+
+# Adicionar eixos y
+valores_y <- c(20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80, -90)
+axis(2, at = valores_y)
+# Adicionar eixo x
+valores_x <- c(-100, -90, -80, -70, -60, -50, -40, -30, -20)
+axis(1, at = valores_x)
+
+cores <- ifelse(australis_thin_full$Species == "Aaustralis",
+                "red",
+                "blue")
+
+points(australis_thin_full$Long, australis_thin_full$Lat,
+       pch = 19,
+       col = cores,
+       cex = 0.7)
+
+################################################################################
+################################################################################
+
+rm(list = setdiff(ls(), c("a_tropicalis_chl", "a_tropicalis_produt", "bio_chl", "bio_produt", "oceans_cropped", 
+                          "eez_cropped", "oceans", "eez", "sp", "pal", "pal1"))) # Manter arquivos
+
+################################################################################
+
+
+
+# Plotar Shapefile recortado
+plot(oceans_cropped, col = "lightblue")
+plot(eez_cropped, add=TRUE)
+
+# Adicionar pontos de ocorrência
+points(australis$Longitude, australis$Latitude,
+       pch = 19,
+       col = "red",
+       cex = 0.7)
+
+# Adicionar eixos y
+valores_y <- c(20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80, -90)
+axis(2, at = valores_y)
+# Adicionar eixo x
+valores_x <- c(-100, -90, -80, -70, -60, -50, -40, -30, -20)
+axis(1, at = valores_x)
+
+cores <- ifelse(australis$Species == "Aaustralis",
+                "red",
+                "blue")
+
+points(australis$Longitude, australis$Latitude,
+       pch = 19,
+       col = cores,
+       cex = 0.7)
+
+################################################################################
+################################################################################
 ################################################################################
 ################################################################################
 
