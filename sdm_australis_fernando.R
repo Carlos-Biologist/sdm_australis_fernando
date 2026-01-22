@@ -494,94 +494,11 @@ points(australis_thin_full$Long, australis_thin_full$Lat,
 ################################################################################
 ################################################################################
 
-rm(list = setdiff(ls(), c("a_tropicalis_chl", "a_tropicalis_produt", "bio_chl", "bio_produt", "oceans_cropped", 
-                          "eez_cropped", "oceans", "eez", "sp", "pal", "pal1"))) # Manter arquivos
+# 03. Ajustar e treinar modelos de adequabilidade -----
 
-################################################################################
-
-
-
-# Plotar Shapefile recortado
-plot(oceans_cropped, col = "lightblue")
-plot(eez_cropped, add=TRUE)
-
-# Adicionar pontos de ocorrência
-points(australis$Longitude, australis$Latitude,
-       pch = 19,
-       col = "red",
-       cex = 0.7)
-
-# Adicionar eixos y
-valores_y <- c(20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80, -90)
-axis(2, at = valores_y)
-# Adicionar eixo x
-valores_x <- c(-100, -90, -80, -70, -60, -50, -40, -30, -20)
-axis(1, at = valores_x)
-
-cores <- ifelse(australis$Species == "Aaustralis",
-                "red",
-                "blue")
-
-points(australis$Longitude, australis$Latitude,
-       pch = 19,
-       col = cores,
-       cex = 0.7)
-
-################################################################################
-################################################################################
-################################################################################
-################################################################################
-
-install.packages("spThin")
-
-library(spThin)    # Realiza o "thinning" espacial, reduzindo a autocorrelação espacial em dados de ocorrência
-
-### Espacialização geográfica -----
-australis <- thin(
-  loc.data = dados_australis,                   # Dataframe de ocorrências filtrado
-  lat.col = "Lat",                              # Coluna com latitude
-  long.col = "Long",                            # Coluna com longitude
-  spec.col = "Species",                         # Coluna com o nome da espécie
-  thin.par = 100,                               # Distância mínima (km) entre pontos
-  reps = 100,                                   # Quantas vezes repetir o processo
-  locs.thinned.list.return = TRUE,              # Retorna lista com resultados de cada repetição
-  write.files = FALSE,                          # Não salva arquivos automaticamente
-  write.log.file = FALSE                        # Não cria arquivo de log
-)
-
-australis <- australis[[3]]                             # Seleciona a repetição
-nrow(australis)                                             # Mostra número de registros
-australis                                                   # Visualiza tabela final
-str(australis)
-
-################################################################################
-################################################################################
-
-# Plotar Shapefile recortado
-plot(oceans_cropped, col = "lightblue")
-plot(eez_cropped, add=TRUE)
-
-# Adicionar pontos de ocorrência
-points(australis$Longitude, australis$Latitude,
-       pch = 19,
-       col = "red",
-       cex = 0.7)
-
-# Adicionar eixos y
-valores_y <- c(20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80, -90)
-axis(2, at = valores_y)
-# Adicionar eixo x
-valores_x <- c(-100, -90, -80, -70, -60, -50, -40, -30, -20)
-axis(1, at = valores_x)
-
-cores <- ifelse(australis$Species == "Aaustralis",
-                "red",
-                "blue")
-
-points(australis$Longitude, australis$Latitude,
-       pch = 19,
-       col = cores,
-       cex = 0.7)
+## Criar instruções do modelo -----
+australis_thin_pres <- australis_thin_full %>% # cria a coluna de presença
+  mutate(australis = 1)
 
 ################################################################################
 ################################################################################
