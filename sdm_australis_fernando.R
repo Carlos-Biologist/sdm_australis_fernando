@@ -11,141 +11,12 @@ library(biooracler)
 library(sp)
 library(dplyr)
 library(psych) # Colinearidade
-#library(sf)
+library(sf)
 library(raster)
 #library(lubridate)
 library(writexl)
 library(readxl)
-#library(ggplot2)
-
-################################################################################
-################################################################################
-
-# 1. Preparação dos dados
-
-options(scipen = 999) # remover notação científica dos dados
-
-pal <- c("#76B9A5", "#E8E1A7", "#E4AD73", "#DC6D37", "#E02423") # paleta de cores
-pal1 <- c("#3E49BB", "#3498DB", "yellow", "orange", "red", "darkred") # paleta de cores
-
-################################################################################
-################################################################################
-
-dados_ams <- read.csv("AmSul_FinalMax.csv")
-dados_peru <- read.csv("Peru_FinalMax.csv")
-
-head(dados_ams)
-summary(dados_ams)
-str(dados_ams)
-
-head(dados_peru)
-summary(dados_peru)
-str(dados_peru)
-
-dados_australis <- bind_rows(dados_ams, dados_peru)
-
-head(dados_australis)
-summary(dados_australis)
-str(dados_australis)
-
-write.csv(dados_australis,
-          file = "dados_australis.csv",
-          row.names = FALSE)
-
-################################################################################
-################################################################################
-
-# Baixar Shapefile usando sf
-oceans <- st_read("shapefile/goas_v01.shp")
-
-# Baixar Shapefile usando sf
-eez <- st_read("shapefile/eez_boundaries_v12.shp")
-
-par(mfrow=c(1, 1))
-
-# Plotar o shapefile com personalizações
-plot(oceans$geometry, col = "lightblue")
-plot(eez, col = "black", add=TRUE)
-
-# Adicionar eixos
-axis(2, at = seq(-90, 90, by = 20))
-axis(1, at = seq(-180, 180, by = 20))
-
-# Definir as coordenadas de recorte
-coord_limit <- c(-100, -20, -89.975, 20)
-
-# Converter o objeto oceans de sf para sp
-oceans_sp <- as(oceans, "Spatial")
-
-# Transformar os polígonos para o sistema de coordenadas desejado
-oceans_cropped_1 <- spTransform(oceans_sp, CRS("+proj=longlat +datum=WGS84"))
-
-# Criar uma extensão usando a função extent do pacote raster
-ext_lim <- raster::extent(coord_limit[1], coord_limit[2], coord_limit[3], coord_limit[4])
-
-# Usar a função crop do pacote raster para recortar
-oceans_cropped <- raster::crop(oceans_cropped_1, ext_lim)
-
-# Converter o objeto oceans de sf para sp
-eez_sp <- as(eez, "Spatial")
-
-# Transformar os polígonos para o sistema de coordenadas desejado
-eez_cropped_1 <- spTransform(eez_sp, CRS("+proj=longlat +datum=WGS84"))
-
-# Usar a função crop do pacote raster para recortar
-eez_cropped <- raster::crop(eez_cropped_1, ext_lim)
-
-################################################################################
-################################################################################
-
-# Plotar Shapefile recortado
-plot(oceans_cropped, col = "lightblue")
-plot(eez_cropped, add=TRUE)
-
-# Adicionar eixos y
-valores_y <- c(20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80, -90)
-axis(2, at = valores_y)
-# Adicionar eixo x
-valores_x <- c(-100, -90, -80, -70, -60, -50, -40, -30, -20)
-axis(1, at = valores_x)
-
-cores <- ifelse(dados_australis$Species == "Aaustralis",
-                "red",
-                "blue")
-
-points(dados_australis$Long, dados_australis$Lat,
-       pch = 19,
-       col = cores,
-       cex = 0.7)
-
-################################################################################
-################################################################################
-
-#list_layers()
-
-#camadas <- list_layers()
-
-#write_xlsx(camadas, "informacoes_camadas.xlsx")
-
-################################################################################
-################################################################################
-
-################################################################################
-################################################################################
-
-# Baixar pacotes
-
-install.packages("devtools")
-devtools::install_github("bio-oracle/biooracler")
-
-library(biooracler)
-library(sp)
-library(dplyr)
-#library(sf)
-library(raster)
-#library(lubridate)
-library(writexl)
-#library(ggplot2)
+library(ggplot2)
 
 ################################################################################
 ################################################################################
@@ -494,11 +365,194 @@ points(australis_thin_full$Long, australis_thin_full$Lat,
 ################################################################################
 ################################################################################
 
-# 03. Ajustar e treinar modelos de adequabilidade -----
+australis_all <- read_xlsx("australis_thin_presenca_sem_brasil.xlsx")
 
-## Criar instruções do modelo -----
-australis_thin_pres <- australis_thin_full %>% # cria a coluna de presença
-  mutate(australis = 1)
+summary(australis_all)
+str(australis_all)
 
 ################################################################################
 ################################################################################
+
+# Plotar Shapefile recortado
+plot(oceans_cropped, col = "lightblue")
+plot(eez_cropped, add=TRUE)
+
+# Adicionar eixos y
+valores_y <- c(20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80, -90)
+axis(2, at = valores_y)
+# Adicionar eixo x
+valores_x <- c(-100, -90, -80, -70, -60, -50, -40, -30, -20)
+axis(1, at = valores_x)
+
+cores <- ifelse(australis_all$Species == "Aaustralis",
+                "red",
+                "blue")
+
+points(australis_all$Long, australis_all$Lat,
+       pch = 19,
+       col = cores,
+       cex = 0.7)
+
+################################################################################
+################################################################################
+
+# Converter o mapa recortado para sf
+
+australis_pres_sf <- st_as_sf(
+  australis_all,
+  coords = c("Long", "Lat"),
+  crs = 4326
+)
+
+oceans_sf <- st_as_sf(oceans_cropped)
+
+################################################################################
+################################################################################
+
+# Sortear pontos candidatos (mais do que 28!)
+
+set.seed(123)
+
+candidatos <- st_sample(
+  oceans_sf,
+  size = 2000,        # quanto maior, melhor
+  type = "random"
+)
+
+candidatos_sf <- st_as_sf(candidatos)
+
+################################################################################
+################################################################################
+
+# Calcular distância até os pontos de presença
+
+dist_matrix <- st_distance(candidatos_sf, australis_pres_sf)
+
+# distância mínima de cada candidato até qualquer presença
+dist_min <- apply(dist_matrix, 1, min)
+
+# Filtrar pontos com distância ≥ 4°
+ausencias_sf <- candidatos_sf[dist_min >= 4, ]
+
+# Selecionar exatamente 30 pontos
+if (nrow(ausencias_sf) < 30) {
+  stop("Poucos pontos disponíveis. Aumente o número de candidatos.")
+}
+
+ausencias_sf <- ausencias_sf %>%
+  slice_sample(n = 30)
+
+################################################################################
+################################################################################
+
+# Visualização final (checagem)
+plot(oceans_cropped, col = "lightblue")
+plot(eez_cropped, add = TRUE)
+
+plot(st_geometry(australis_pres_sf), add = TRUE, col = "blue", pch = 16)
+plot(st_geometry(ausencias_sf), add = TRUE, col = "red", pch = 16)
+
+legend(
+  "bottomleft",
+  legend = c("Presença", "Ausência"),
+  col = c("blue", "red"),
+  pch = c(16, 16),
+  bty = "n"
+)
+
+################################################################################
+################################################################################
+
+# Extrair latitude e longitude
+ausencias_df <- ausencias_sf %>%
+  st_coordinates() %>%
+  as.data.frame()
+
+colnames(ausencias_df) <- c("Long", "Lat")
+
+################################################################################
+################################################################################
+
+australis_ausencias <- raster::extract(bio, ausencias_sf)
+
+summary(australis_ausencias)
+str(australis_ausencias)
+
+australis_ausencias_df <- as.data.frame(australis_ausencias)
+
+str(australis_ausencias_df)
+colnames(australis_ausencias_df)
+
+################################################################################
+################################################################################
+
+write_xlsx(
+  australis_ausencias_df,
+  path = "australis_ausencias_28_pontos.xlsx"
+)
+
+write_xlsx(
+  ausencias_df,
+  path = "australis_ausencias_coords.xlsx"
+)
+
+################################################################################
+################################################################################
+
+australis_ausencias <- read_xlsx("australis_ausencias_28_pontos.xlsx")
+
+summary(australis_ausencias)
+str(australis_ausencias)
+
+################################################################################
+################################################################################
+
+# Plotar Shapefile recortado
+plot(oceans_cropped, col = "lightblue")
+plot(eez_cropped, add=TRUE)
+
+# Adicionar eixos y
+valores_y <- c(20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80, -90)
+axis(2, at = valores_y)
+# Adicionar eixo x
+valores_x <- c(-100, -90, -80, -70, -60, -50, -40, -30, -20)
+axis(1, at = valores_x)
+
+# Pontos de presença
+plot(
+  st_geometry(australis_pres_sf),
+  add = TRUE,
+  col = "blue",
+  pch = 16
+)
+
+# Pontos de ausência
+points(
+  australis_ausencias$Long,
+  australis_ausencias$Lat,
+  col = "red",
+  pch = 16
+)
+
+# Legenda
+legend(
+  "bottomleft",
+  legend = c("Presença", "Ausência"),
+  col = c("blue", "red"),
+  pch = c(16, 16),
+  bty = "n"
+)
+
+################################################################################
+################################################################################
+
+australis_all <- read_xlsx("1_australis_thin_presenca_ausencia.xlsx")
+
+australis_all$sp_cod <- as.factor(australis_all$sp_cod)
+
+summary(australis_all)
+str(australis_all)
+
+################################################################################
+################################################################################
+
