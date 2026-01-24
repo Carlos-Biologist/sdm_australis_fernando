@@ -27,6 +27,7 @@ options(scipen = 999) # remover notação científica dos dados
 
 pal <- c("#76B9A5", "#E8E1A7", "#E4AD73", "#DC6D37", "#E02423") # paleta de cores
 pal1 <- c("#3E49BB", "#3498DB", "yellow", "orange", "red", "darkred") # paleta de cores
+blue_pal <- colorRampPalette(c("#08306B", "#2171B5", "#6BAED6", "#DEEBF7")) # paleta de cores
 
 ################################################################################
 ################################################################################
@@ -121,11 +122,11 @@ points(dados_australis$Long, dados_australis$Lat,
 ################################################################################
 ################################################################################
 
-list_layers()
+list_layers("tas_baseline_2000_2020_depthsurf")
 
-camadas <- list_layers()
+#camadas <- list_layers()
 
-write_xlsx(camadas, "informacoes_camadas.xlsx")
+#write_xlsx(camadas, "informacoes_camadas.xlsx")
 
 ################################################################################
 ################################################################################
@@ -556,3 +557,16 @@ str(australis_all)
 ################################################################################
 ################################################################################
 
+names(bio)
+
+bathy <- bio[["bathymetry_mean"]]
+
+# Plotar o raster de batimetria
+plot(
+  bathy,
+  col = terrain.colors(100),
+  legend = TRUE
+)
+
+plot(oceans_cropped, add = TRUE, border = NA)
+plot(eez_cropped, add = TRUE, lwd = 1.5)
