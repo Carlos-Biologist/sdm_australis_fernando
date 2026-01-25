@@ -207,9 +207,8 @@ silicate_surf_raster <- raster(silicate_baseline_2000_2010)
 tas_surf_raster <- raster(tas_baseline_surf_2000_2010)
 
 # Empilhar os RasterLayer em um RasterStack
-bio <- stack(tas_surf_raster, chl_surf_raster, mld_surf_raster, tsm_surf_raster, sal_surf_raster, 
-                 swd_surf_raster, sws_surf_raster, produt_surf_raster, bathy_raster, iron_surf_raster,
-                 nitrate_surf_raster, oxygen_surf_raster, ph_surf_raster, phosphate_surf_raster, silicate_surf_raster)
+bio <- stack(chl_surf_raster, mld_surf_raster, tsm_surf_raster, sal_surf_raster, swd_surf_raster, sws_surf_raster, 
+             bathy_raster, iron_surf_raster, nitrate_surf_raster, phosphate_surf_raster, silicate_surf_raster)
 
 print(bio)
 
@@ -547,26 +546,67 @@ legend(
 ################################################################################
 ################################################################################
 
-australis_all <- read_xlsx("1_australis_thin_presenca_ausencia.xlsx")
+#library(devtools)
+#devtools::install_github("biomodhub/biomod2", dependencies = TRUE)
 
-australis_all$sp_cod <- as.factor(australis_all$sp_cod)
-
-summary(australis_all)
-str(australis_all)
+library(biomod2)
 
 ################################################################################
 ################################################################################
 
-names(bio)
+# Obter e processar dados ambientais e bióticos -----
 
-bathy <- bio[["bathymetry_mean"]]
+australis_pres_aus <- read_xlsx("1_dados_presenca_ausencia.xlsx")
 
-# Plotar o raster de batimetria
-plot(
-  bathy,
-  col = terrain.colors(100),
-  legend = TRUE
+australis_pres_aus$sp_cod <- as.factor(australis_pres_aus$sp_cod)
+
+head(australis_pres_aus)
+summary(australis_pres_aus)
+str(australis_pres_aus)
+
+#is.data.frame(sp_biomod)
+
+# Select the name of the studied species
+myRespName <- 'sp_cod'
+
+# Get corresponding presence/absence data
+myResp <- as.numeric(australis_pres_aus$sp_cod)
+
+# Get corresponding XY coordinates
+myRespXY <- australis_pres_aus[, c('Long', 'Lat')]
+
+bio_cropped <- raster::stack(bio) # transformar de Brick para Stack
+
+# Format Data with true absences
+myBiomodData <- BIOMOD_FormatingData(
+  resp.var  = myResp,
+  expl.var  = bio_cropped,
+  resp.xy   = myRespXY,
+  resp.name = myRespName
 )
 
-plot(oceans_cropped, add = TRUE, border = NA)
-plot(eez_cropped, add = TRUE, lwd = 1.5)
+myBiomodData
+myBiomodData@coord
+head(myBiomodData@data.env.var)
+plot(myBiomodData)
+
+# Carregue o pacote openxlsx
+library(openxlsx)
+
+# Extraia os dados de myBiomodData
+data_env_var <- myBiomodData@data.env.var
+
+# Salve os dados em um arquivo .xlsx
+write.xlsx(data_env_var, file = "australis_env_var.xlsx")
+
+################################################################################
+################################################################################
+
+library(terra)
+
+terra::plot(
+  bio[["bathymetry_mean"]],
+  col    = blue_pal(100),
+  legend = TRUE,
+  asp    = 1
+)
