@@ -602,11 +602,56 @@ write.xlsx(data_env_var, file = "australis_env_var.xlsx")
 ################################################################################
 ################################################################################
 
-library(terra)
+# Obter e processar dados ambientais e bióticos -----
 
-terra::plot(
-  bio[["bathymetry_mean"]],
-  col    = blue_pal(100),
-  legend = TRUE,
-  asp    = 1
+australis_pres <- read_xlsx("1_dados_presenca.xlsx")
+
+str(australis_pres)
+
+# Cria um SpatialPointsDataFrame
+australis_pres <- SpatialPointsDataFrame(australis_pres, 
+                                        data = data.frame(sp_cod = rep(1, nrow(australis_pres))))
+
+australis_pres
+
+# ---------------------------------------------------------------------------- #
+
+#install.packages("sdm")
+library(sdm)
+
+mdata_astralis <- sdmData(
+  formula = sp_cod ~ .,       # Modelo: presença ~ variáveis ambientais
+  train = australis_pres,     # Dados de treino
+  predictors = bio,           # Variáveis ambientais
+  bg = list(
+    n = 28,                   # Número de pontos de background (pseudo ausência)
+    method = "gRandom",       # Distribuição aleatória
+    remove = TRUE             # Remove pontos de fundo sobrepostos a presenças
+  )
 )
+
+# ---------------------------------------------------------------------------- #
+
+# Rodando múltiplos algoritmos
+modelo_australis <- sdm(
+  formula = sp_cod ~ .,
+  data = mdata_australis,
+  methods=c('glm','gam','gbm','svm','rf'),
+  replication = "cv",   # validação cruzada
+  cv.folds = 5,         # número de folds
+  test.percent = 30,
+  parallelSettings = list(ncore = 2, method = "parallel")
+)
+
+# ---------------------------------------------------------------------------- #
+
+modelo_australis              # Mostra sumário do modelo
+
+roc(modelo_australis)         # Calcula curva ROC/AUC
+
+getVarImp(modelo_australis)   # Importância das variáveis
+
+# Curvas de resposta para duas variáveis específicas
+rcurve(modelo_australis, gg = TRUE)
+
+# ---------------------------------------------------------------------------- #
