@@ -554,30 +554,37 @@ library(biomod2)
 ################################################################################
 ################################################################################
 
-# Obter e processar dados ambientais e bióticos -----
+# Dados de presença / ausência -----
 
 australis_pres_aus <- read_xlsx("1_dados_presenca_ausencia.xlsx")
 
-australis_pres_aus$sp_cod <- as.factor(australis_pres_aus$sp_cod)
+# Garantir data.frame (não tibble)
+australis_pres_aus <- as.data.frame(australis_pres_aus)
 
-head(australis_pres_aus)
-summary(australis_pres_aus)
+# Checagens básicas
 str(australis_pres_aus)
+summary(australis_pres_aus)
 
-#is.data.frame(sp_biomod)
+# Nome da espécie
+myRespName <- "sp_cod"
 
-# Select the name of the studied species
-myRespName <- 'sp_cod'
+# Coordenadas (data.frame simples)
+myRespXY <- australis_pres_aus[, c("Long", "Lat")]
 
-# Get corresponding presence/absence data
-myResp <- as.numeric(australis_pres_aus$sp_cod)
+################################################################################
 
-# Get corresponding XY coordinates
-myRespXY <- australis_pres_aus[, c('Long', 'Lat')]
+# Dados ambientais -----
 
-bio_cropped <- raster::stack(bio) # transformar de Brick para Stack
+# Converter Brick → Stack (ok)
+bio_cropped <- raster::stack(bio)
 
-# Format Data with true absences
+# Garantir CRS
+crs(bio_cropped) <- CRS("+proj=longlat +datum=WGS84 +no_defs")
+
+################################################################################
+
+# Formatação BIOMOD (com ausências reais) -----
+
 myBiomodData <- BIOMOD_FormatingData(
   resp.var  = myResp,
   expl.var  = bio_cropped,
@@ -602,56 +609,103 @@ write.xlsx(data_env_var, file = "australis_env_var.xlsx")
 ################################################################################
 ################################################################################
 
-# Obter e processar dados ambientais e bióticos -----
+# k-fold selection
+cv.k <- bm_CrossValidation(bm.format = myBiomodData,
+                           strategy = 'kfold',
+                           nb.rep = 2,
+                           k = 3)
 
-australis_pres <- read_xlsx("1_dados_presenca.xlsx")
+allModels <- c('GAM', 'GBM', 'GLM', 'RF', 'XGBOOST')
 
-str(australis_pres)
-
-# Cria um SpatialPointsDataFrame
-australis_pres <- SpatialPointsDataFrame(australis_pres, 
-                                        data = data.frame(sp_cod = rep(1, nrow(australis_pres))))
-
-australis_pres
-
-# ---------------------------------------------------------------------------- #
-
-#install.packages("sdm")
-library(sdm)
-
-mdata_astralis <- sdmData(
-  formula = sp_cod ~ .,       # Modelo: presença ~ variáveis ambientais
-  train = australis_pres,     # Dados de treino
-  predictors = bio,           # Variáveis ambientais
-  bg = list(
-    n = 28,                   # Número de pontos de background (pseudo ausência)
-    method = "gRandom",       # Distribuição aleatória
-    remove = TRUE             # Remove pontos de fundo sobrepostos a presenças
-  )
+a_australis_opt <- bm_ModelingOptions(
+  data.type = 'binary',
+  models = allModels,
+  strategy = 'default',
+  bm.format = myBiomodData
 )
 
-# ---------------------------------------------------------------------------- #
-
-# Rodando múltiplos algoritmos
-modelo_australis <- sdm(
-  formula = sp_cod ~ .,
-  data = mdata_australis,
-  methods=c('glm','gam','gbm','svm','rf'),
-  replication = "cv",   # validação cruzada
-  cv.folds = 5,         # número de folds
-  test.percent = 30,
-  parallelSettings = list(ncore = 2, method = "parallel")
+a_australis_model <- BIOMOD_Modeling(
+  bm.format    = myBiomodData,
+  modeling.id = 'AllModels',
+  models      = c('GAM','GBM','GLM','RF','XGBOOST'),
+  CV.strategy = 'random',
+  CV.nb.rep   = 10,
+  CV.perc     = 0.8,
+  OPT.strategy = 'default',
+  metric.eval = c('TSS','AUCroc'),
+  var.import  = 5,
+  seed.val    = 42
 )
 
-# ---------------------------------------------------------------------------- #
+a_australis_model <- BIOMOD_Modeling(
+  bm.format    = myBiomodData,
+  modeling.id = "AllModels",
+  models      = c("GBM", "GAM", "RF", "XGBOOST"),
+  OPT.user    = a_australis_opt,
+  CV.strategy = "random",
+  CV.nb.rep   = 10,
+  CV.perc     = 0.7,
+  var.import  = 3,
+  nb.cpu      = 2,
+  seed.val    = 123,
+  metric.eval = c("TSS", "ROC")
+)
 
-modelo_australis              # Mostra sumário do modelo
+################################################################################
+################################################################################
 
-roc(modelo_australis)         # Calcula curva ROC/AUC
+# Model single models
+a_australis_model <- BIOMOD_Modeling(
+  bm.format    = myBiomodData,
+  modeling.id = 'AllModels',
+  models      = c("GBM", "GAM", "RF", "XGBOOST"),
+  OPT.user    = a_australis_opt,   # 👈 NOME CORRETO
+  CV.strategy = 'random',
+  CV.nb.rep   = 10,
+  CV.perc     = 0.7,
+  var.import  = 3,
+  nb.cpu      = 2,
+  seed.val    = 123,
+  metric.eval = c('TSS', 'ROC')
+)
 
-getVarImp(modelo_australis)   # Importância das variáveis
+a_tropicalis_model_scores <- get_evaluations(a_tropicalis_model)
+dim(a_tropicalis_model_scores)
+dimnames(a_tropicalis_model_scores)
 
-# Curvas de resposta para duas variáveis específicas
-rcurve(modelo_australis, gg = TRUE)
+# Get evaluation scores & variables importance
+bm_PlotEvalMean(
+  a_tropicalis_model,
+  metric.eval = c('TSS','ROC'),
+  dataset = "validation",
+  group.by = "algo",
+  do.plot = TRUE
+)
 
-# ---------------------------------------------------------------------------- #
+a_tropicalis_model_var_imp <- get_variables_importance(a_tropicalis_model)
+
+# Calcula a média da importância das variáveis pelas colunas "expl.var"
+mean_var_imp <- aggregate(var.imp ~ expl.var, data = a_tropicalis_model_var_imp, FUN = mean)
+
+# Exibe o resultado
+print(mean_var_imp)
+
+# Ordena o dataframe mean_var_imp do mais importante para o menos importante
+mean_var_imp <- mean_var_imp[order(mean_var_imp$var.imp, decreasing = TRUE), ]
+
+# Gera o gráfico de barras invertido
+barplot(mean_var_imp$var.imp, names.arg = mean_var_imp$expl.var, 
+        xlab = "Importância", ylab = "Variáveis Explicativas",
+        col = "blue")
+
+
+
+
+
+
+
+# Criar fórmula explicitamente
+myFormula <- bm_MakeFormula(
+  resp.name = myRespName,
+  expl.var  = get_formal_data(myBiomodData, "expl.var")
+)
