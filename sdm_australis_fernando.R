@@ -146,17 +146,17 @@ oxygen_baseline_surf <- "o2_baseline_2000_2018_depthsurf" ###
 ph_baseline_surf <- "ph_baseline_2000_2018_depthsurf" ###
 phosphate_baseline_surf <- "po4_baseline_2000_2018_depthsurf" ###
 silicate_baseline_surf <- "si_baseline_2000_2018_depthsurf" ###
-
+  
 time_bathy = c('1970-01-01T00:00:00Z', '1970-01-01T00:00:00Z')
 time = c('2000-01-01T00:00:00Z', '2000-01-01T00:00:00Z')
 latitude = c(-89.975, 20)
 longitude = c(-100, 20)
-
+  
 constraints_bathy = list(time_bathy, latitude, longitude)
 constraints = list(time, latitude, longitude)
 names(constraints) = c("time", "latitude", "longitude")
 names(constraints_bathy) = c("time", "latitude", "longitude")
-
+  
 variables_tas_baseline_surf = c("tas_mean")
 variables_chl_baseline_surf = c("chl_mean")
 variables_mld_baseline_surf = c("mlotst_mean")
@@ -172,7 +172,7 @@ variables_oxygen_baseline_surf = c("o2_mean")
 variables_ph_baseline_surf = c("ph_mean")
 variables_phosphate_baseline_surf = c("po4_mean")
 variables_silicate_baseline_surf = c("si_mean")
-
+  
 tas_baseline_surf_2000_2010 <- download_layers(tas_baseline_surf, variables_tas_baseline_surf, constraints)
 chl_baseline_surf_2000_2010 <- download_layers(chl_baseline_surf, variables_chl_baseline_surf, constraints)
 mld_baseline_surf_2000_2010 <- download_layers(mld_baseline_surf, variables_mld_baseline_surf, constraints)
